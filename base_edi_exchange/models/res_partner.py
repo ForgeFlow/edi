@@ -32,6 +32,7 @@ class ResPartner(models.Model):
 # Relation Model with Sequence to have an easily adjustable order
 class PartnerExchangeRel(models.Model):
     _name = 'partner.exchange.rel'
+    _description = "Partner Exchange Relation"
     _order = 'sequence asc'
 
     sequence = fields.Integer(string="Sequence", default=10)

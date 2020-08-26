@@ -43,6 +43,19 @@ class BaseEDIExchange(models.Model):
     send_pmode = fields.Char(string="Pmode used for sending")
     receive_pmode = fields.Char(string="Pmode used for receiving")
 
+    @api.onchange('type')
+    def onchange_type(self):
+        super(BaseEDIExchange, self).onchange_type()
+        if self.type == 'holodeck':
+            path = os.path.dirname(
+                os.path.split(os.path.realpath(__file__))[0])
+            if not self.send_folder:
+                self.send_folder = os.path.join(path, 'send_folder')
+            if not self.receive_folder:
+                self.receive_folder = os.path.join(path, 'receive_folder')
+            if not self.archive_folder:
+                self.archive_folder = os.path.join(path, 'archive_folder')
+
     @api.multi
     def send(self, file, vals=None):
         if not vals:
@@ -50,7 +63,7 @@ class BaseEDIExchange(models.Model):
         _logger.debug('Base Send holodeck called.')
         if self.type != 'holodeck':
             return super(BaseEDIExchange, self).send()
-        message_id = uuid.uuid4()
+        message_id = vals.get("conversation_id")
         vals.update({
             'name': message_id,
             'message_id': message_id,

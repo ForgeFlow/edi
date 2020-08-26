@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 import logging
 import os
 import base64
-from odoo.addons.base_business_document_import.exceptions import WrongTypeError
 import traceback, sys
 
 _logger = logging.getLogger(__name__)
@@ -54,14 +53,13 @@ class BaseEDITransfer (models.Model):
                 _logger.info("Object Import reported as success - but no valid sale data.")
                 self.state = "manual"
                 return order_dict
-        except WrongTypeError as wte:
-            return super(BaseEDITransfer, self).identify_and_import_object()
         except UserError as ue:
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_import_object()
             self.error_text = str(ue)
         except Exception as e:
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_import_object()
             self.error_text = str(e)
+        return res
 
     @api.multi
     def identify_and_update_object(self):
@@ -82,13 +80,12 @@ class BaseEDITransfer (models.Model):
                 _logger.info("Object Import reported as success - but no valid sale data.")
                 self.state = "manual"
                 return action
-        except WrongTypeError as wte:
-            return super(BaseEDITransfer, self).identify_and_import_object()
         except UserError as ue:
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_update_object()
             self.error_text = str(ue)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_update_object()
             self.error_text = str(e)
+        return res
 

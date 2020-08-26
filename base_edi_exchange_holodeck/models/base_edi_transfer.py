@@ -44,7 +44,7 @@ class BaseEDITransfer (models.Model):
 
     @api.multi
     def send_object(self):
-        attachment_path = os.path.join(self.edi_exchange_id.send_folder, "attachments", self.message_id)
+        attachment_path = os.path.join(self.edi_exchange_id.send_folder, "attachments", self.message_id + ".pdf")
         with open(attachment_path, 'wb+') as f:
             f.write(self.file_content)
         self.edi_exchange_id.create_send_xml(attachment_path, self)

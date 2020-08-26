@@ -6,8 +6,8 @@ from datetime import datetime, timedelta
 import logging
 import os
 import base64
-from odoo.addons.base_business_document_import.exceptions import WrongTypeError
-import sys, traceback
+import sys
+import traceback
 
 _logger = logging.getLogger(__name__)
 
@@ -39,15 +39,15 @@ class BaseEDITransfer (models.Model):
                 _logger.info("Object Import reported as failure.")
                 self.state = "error"
                 self.error_text = str(success)
-        except WrongTypeError as wte:
-            return super(BaseEDITransfer, self).identify_and_import_object()
+                return False
         except UserError as ue:
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_import_object()
             self.error_text = str(ue)
         except Exception as e:
             traceback.print_exc(file=sys.stdout)
-            self.state = 'error'
+            res = super(BaseEDITransfer, self).identify_and_import_object()
             self.error_text = str(e)
+        return res
 
     @api.multi
     def _try_match_po(self, data_dict):

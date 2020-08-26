@@ -80,6 +80,10 @@ class BaseEDIExchange(models.Model):
     manual_transfer_count = fields.Integer(string="Manual Transfers",
                                            compute="_compute_transfer_counts")
 
+    @api.onchange('type')
+    def onchange_type(self):
+        pass
+
     @api.multi
     def send(self, file, vals=None):
         pass
