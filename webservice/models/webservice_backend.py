@@ -7,7 +7,7 @@ from odoo import fields, models
 class WebserviceBackend(models.Model):
 
     _name = "webservice.backend"
-    _inherit = ["collection.base", "server.env.techname.mixin"]
+    _inherit = ["collection.base", "server.env.techname.mixin", "server.env.mixin"]
     _description = "WebService Backend"
 
     name = fields.Char(required=True)
@@ -36,10 +36,14 @@ class WebserviceBackend(models.Model):
 
     @property
     def _server_env_fields(self):
-        return {
-            "protocol": {},
-            "url": {},
-            "username": {},
-            "password": {},
-            "content_type": {},
-        }
+        res = super()._server_env_fields()
+        res.update(
+            {
+                "protocol": {},
+                "url": {},
+                "username": {},
+                "password": {},
+                "content_type": {},
+            }
+        )
+        return res
