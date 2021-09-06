@@ -3,9 +3,12 @@
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
 
 import base64
+import logging
 from collections import defaultdict
 
 from odoo import _, api, exceptions, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class EDIExchangeRecord(models.Model):
@@ -165,6 +168,7 @@ class EDIExchangeRecord(models.Model):
     ):
         """Handy method to no have to convert b64 back and forth."""
         self.ensure_one()
+        _logger.info("output_string type: %s" % type(output_string))
         if not isinstance(output_string, bytes):
             output_string = bytes(output_string, encoding)
         self[field_name] = base64.b64encode(output_string)
