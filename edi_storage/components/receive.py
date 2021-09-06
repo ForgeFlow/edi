@@ -20,8 +20,10 @@ class EDIStorageReceiveComponent(Component):
     def receive(self):
         checker = self.component(usage="storage.check")
         result = checker.check()
+        _logger.info("LOIS TEST - checker")
         if not result:
             # all good here
+            _logger.info("LOIS TEST - checker 2")
             return True
 
         direction = self.exchange_record.direction
