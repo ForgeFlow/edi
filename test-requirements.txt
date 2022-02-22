@@ -1,2 +1,5 @@
-
-odoo_test_helper
+odoo_test_helper @ git+https://github.com/akretion/odoo-test-helper@refs/pull/13/head#
+odoo-addon-component_event @ git+https://github.com/OCA/connector@refs/pull/425/head#subdirectory=setup/component_event
+odoo-addon-connector @ git+https://github.com/OCA/connector@refs/pull/425/head#subdirectory=setup/connector
+odoo-addon-edi_oca @ git+https://github.com/OCA/edi@refs/pull/490/head#subdirectory=setup/edi_oca
+odoo-addon-storage_backend @ git+https://github.com/OCA/storage@refs/pull/147/head#subdirectory=setup/storage_backend
