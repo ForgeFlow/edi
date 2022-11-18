@@ -20,6 +20,9 @@ class AccountInvoiceImport(models.TransientModel):
 
     @api.model
     def parse_xml_invoice(self, xml_root):
+        if isinstance(xml_root, bytes):
+            xml_root = etree.fromstring(xml_root)
+
         if xml_root.tag and xml_root.tag.startswith(
             "{urn:oasis:names:specification:ubl:schema:xsd:Invoice"
         ):
