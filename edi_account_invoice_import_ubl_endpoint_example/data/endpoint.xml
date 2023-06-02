@@ -19,7 +19,8 @@
         <field name="exec_mode">code</field>
         <field name="code_snippet">
 xml_data = request.httprequest.get_data()
-parsed, error = env["account.invoice.import"]._parse_xml(xml_data)
+parsed = env["account.invoice.import"].parse_xml_invoice(xml_data)
+error = False
 if error:
     raise werkzeug.exceptions.BadRequest(error)
 
