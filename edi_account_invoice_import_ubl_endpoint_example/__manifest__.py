@@ -14,6 +14,7 @@
     "depends": [
         "edi_account_invoice_import",
         "account_invoice_import_ubl",
+        "edi_account_invoice_import_ubl",
         "edi_endpoint_oca",
     ],
     "auto_install": False,
