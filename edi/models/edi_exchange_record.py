@@ -388,7 +388,7 @@ class EDIExchangeRecord(models.Model):
                 )
 
         for model, rec_ids in by_model_rec_ids.items():
-            records = self.env[model].browse(rec_ids).with_user(self._uid)
+            records = self.env[model].browse(rec_ids).sudo(self._uid)
             checker = by_model_checker[model]
             for record in records:
                 check_operation = checker(
