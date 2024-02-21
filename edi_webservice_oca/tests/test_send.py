@@ -1,7 +1,7 @@
 # Copyright 2022 Camptocamp SA
 # @author Simone Orsi <simahawk@gmail.com>
 # License AGPL-3.0 or later (http://www.gnu.org/licenses/agpl).
-import responses
+import httpretty
 
 from odoo import exceptions
 
@@ -94,7 +94,7 @@ class TestSend(TestEDIWebserviceBase):
         self.assertEqual(kwargs["data"], "This is a simple file")
         self.assertEqual(kwargs["url_params"], {"endpoint": "push/here"})
 
-    @responses.activate
+    @httpretty.activate
     def test_component_send(self):
         self.record.type_id.set_settings(self.settings2)
         # Internal user should be able to call the third party webservice
@@ -104,11 +104,11 @@ class TestSend(TestEDIWebserviceBase):
         backend = self.backend.with_user(self.a_user)
 
         url = "https://foo.test/push/here"
-        responses.add(responses.POST, url, body="{}")
+        httpretty.register_uri(httpretty.POST, url, body="{}")
         component = backend._get_component(record, "send")
         result = component.send()
         self.assertEqual(result, b"{}")
         self.assertEqual(
-            responses.calls[0].request.headers["Content-Type"], "application/xml"
+            httpretty.latest_requests()[0].headers["Content-Type"], "application/xml"
         )
-        self.assertEqual(responses.calls[0].request.body, "This is a simple file")
+        self.assertEqual(httpretty.latest_requests()[0].body, "This is a simple file")
