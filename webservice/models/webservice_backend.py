@@ -77,7 +77,7 @@ class WebserviceBackend(models.Model):
     def _get_adapter(self):
         with self.work_on(self._name) as work:
             return work.component(
-                usage="webservice.request", webservice_protocol=self.protocol
+                usage="webservice.request", webservice_protocol=self.sudo().protocol
             )
 
     @property

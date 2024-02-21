@@ -100,8 +100,8 @@ class TestSend(TestEDIWebserviceBase):
         # Internal user should be able to call the third party webservice
         # without read access (no ir.access.model records)
         # on `webservice.backend` model which store credentials
-        record = self.record.with_user(self.a_user)
-        backend = self.backend.with_user(self.a_user)
+        record = self.record.sudo(self.a_user)
+        backend = self.backend.sudo(self.a_user)
 
         url = "https://foo.test/push/here"
         httpretty.register_uri(httpretty.POST, url, body="{}")
@@ -111,4 +111,4 @@ class TestSend(TestEDIWebserviceBase):
         self.assertEqual(
             httpretty.latest_requests()[0].headers["Content-Type"], "application/xml"
         )
-        self.assertEqual(httpretty.latest_requests()[0].body, "This is a simple file")
+        self.assertEqual(httpretty.latest_requests()[0].body, b"This is a simple file")

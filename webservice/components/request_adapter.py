@@ -50,32 +50,32 @@ class BaseRestRequestsAdapter(Component):
     def _get_auth(self, auth=False, **kwargs):
         if auth:
             return auth
-        handler = getattr(self, "_get_auth_for_" + self.collection.auth_type, None)
+        handler = getattr(self, "_get_auth_for_" + self.collection.sudo().auth_type, None)
         return handler(**kwargs) if handler else None
 
     def _get_auth_for_user_pwd(self, **kw):
-        if self.collection.username and self.collection.password:
-            return self.collection.username, self.collection.password
+        if self.collection.sudo().username and self.collection.sudo().password:
+            return self.collection.sudo().username, self.collection.sudo().password
         return None
 
     def _get_headers(self, content_type=False, headers=False, **kwargs):
         headers = headers or {}
         result = {
-            "Content-Type": content_type or self.collection.content_type,
+            "Content-Type": content_type or self.collection.sudo().content_type,
         }
-        handler = getattr(self, "_get_headers_for_" + self.collection.auth_type, None)
+        handler = getattr(self, "_get_headers_for_" + self.collection.sudo().auth_type, None)
         if handler:
             headers.update(handler(**kwargs))
         result.update(headers)
         return result
 
     def _get_headers_for_api_key(self, **kw):
-        return {self.collection.api_key_header: self.collection.api_key}
+        return {self.collection.sudo().api_key_header: self.collection.sudo().api_key}
 
     def _get_url(self, url=None, url_params=None, **kwargs):
         if not url:
             # TODO: if url is given, we should validate the domain
             # to avoid abusing a webservice backend for different calls.
-            url = self.collection.url
+            url = self.collection.sudo().url
         url_params = url_params or kwargs
         return url.format(**url_params)
