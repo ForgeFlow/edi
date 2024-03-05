@@ -14,7 +14,7 @@ from odoo.addons.base_sparse_field.models.fields import Serialized
 @singledispatch
 def convert(obj):
     raise TypeError(
-        f"Object of type {obj.__class__.__name__} " f"is not JSON serializable"
+        "Object of type %s is not JSON serializable" % {obj.__class__.__name__}
     )
 
 

@@ -46,8 +46,8 @@ class TestEDIMetadata(EDIBackendCommonTestCase):
                 "origin_exchange_record_id": self.exc_record.id,
             }
         )
-        self.assertFalse(consumer_record._edi_get_metadata())
-        self.assertFalse(self.exc_record.get_metadata())
+        self.assertEqual(consumer_record._edi_get_metadata(), '{}')
+        self.assertEqual(self.exc_record.get_metadata(), '{}')
 
     def test_store(self):
         vals = {

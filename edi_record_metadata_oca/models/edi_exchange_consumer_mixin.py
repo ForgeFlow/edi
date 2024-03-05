@@ -1,6 +1,7 @@
 # Copyright 2023 Camptocamp SA
 # @author Simone Orsi <simahawk@gmail.com>
 # License LGPL-3.0 or later (http://www.gnu.org/licenses/lgpl).
+import json
 
 from odoo import api, models
 
