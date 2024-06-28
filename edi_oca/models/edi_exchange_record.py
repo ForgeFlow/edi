@@ -46,7 +46,9 @@ class EDIExchangeRecord(models.Model):
         readonly=True,
         inverse="_inverse_res_id"
     )
-    related_record_exists = fields.Boolean(compute="_compute_related_record_exists")
+    related_record_exists = fields.Boolean(
+        compute="_compute_related_record_exists", compute_sudo=True
+    )
     related_name = fields.Char(compute="_compute_related_name", compute_sudo=True)
     exchange_file = fields.Binary(attachment=True, copy=False)
     exchange_filename = fields.Char(
