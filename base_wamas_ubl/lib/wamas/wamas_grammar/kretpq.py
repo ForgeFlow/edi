@@ -118,9 +118,9 @@ grammar = OrderedDict(
             "type": "float",
             "length": 12,
             "dp": 3,
-            "dict_key": False,
+            "dict_key": "SollMng",
             "df_val": False,
-            "df_func": "get_quantity_done",
+            "df_func": False,
         },
         "IvKretp_AnmMngs_Gew": {
             "type": "float",

@@ -7,8 +7,6 @@ from . import (
     weap,
     ausk,
     ausp,
-    auskq,
-    auspq,
     kretkq,
     kretpq,
     kretk,

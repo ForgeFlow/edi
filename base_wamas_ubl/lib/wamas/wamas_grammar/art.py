@@ -539,7 +539,7 @@ grammar = OrderedDict(
             "type": "int",
             "length": 4,
             "dp": False,
-            "dict_key": "removal_time",
+            "dict_key": False,
             "df_val": False,
             "df_func": False,
         },

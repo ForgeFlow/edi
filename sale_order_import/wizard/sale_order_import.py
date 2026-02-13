@@ -56,6 +56,7 @@ class SaleOrderImport(models.TransientModel):
         "res.partner", string="Shipping Address", readonly=True
     )
     sale_id = fields.Many2one("sale.order", string="Quotation to Update")
+    # Confirm order after creating Sale Order
     confirm_order = fields.Boolean(default=False)
 
     @api.onchange("order_file")
@@ -100,15 +101,11 @@ class SaleOrderImport(models.TransientModel):
                     type=self.import_type.upper(),
                 )
             )
-
-        if parser_method := getattr(self, f"parse_{self.import_type}_order", None):
-            return parser_method(filecontent, detect_doc_type=detect_doc_type)
-        else:
-            logger.error(
-                "%(meth)s not found %(itype)s not supported",
-                meth=f"parse_{self.import_type}_order",
-                itype=self.import_type,
+        if hasattr(self, "parse_%s_order" % self.import_type):
+            return getattr(self, "parse_%s_order" % self.import_type)(
+                filecontent, detect_doc_type=detect_doc_type
             )
+        else:
             raise UserError(
                 _(
                     "This Import Type is not supported. Did you install "
@@ -317,33 +314,26 @@ class SaleOrderImport(models.TransientModel):
                 )
             )
 
-    # TODO: I wonder why these methods are model methods
     @api.model
-    def create_order(
-        self, parsed_order, price_source, order_filename=None, confirm_order=False
-    ):
+    def create_order(self, parsed_order, price_source, order_filename=None):
         soo = self.env["sale.order"].with_context(mail_create_nosubscribe=True)
         bdio = self.env["business.document.import"]
         so_vals = self._prepare_order(parsed_order, price_source)
         order = soo.create(so_vals)
-        if confirm_order:
-            order.action_confirm()
         bdio.post_create_or_update(parsed_order, order, doc_filename=order_filename)
         logger.info("Sale Order ID %d created", order.id)
+        if self.confirm_order:
+            order.action_confirm()
+            logger.info("Sale Order ID %d confirmed", order.id)
         return order
 
     @api.model
-    def create_order_ws(
-        self, parsed_order, price_source, order_filename=None, confirm_order=False
-    ):
+    def create_order_ws(self, parsed_order, price_source, order_filename=None):
         """Same method as create_order() but callable via JSON-RPC
         webservice. Returns an ID to avoid this error:
         TypeError: sale.order(15,) is not JSON serializable"""
         order = self.create_order(
-            parsed_order,
-            price_source,
-            order_filename=order_filename,
-            confirm_order=confirm_order,
+            parsed_order, price_source, order_filename=order_filename
         )
         return order.id
 
@@ -422,12 +412,7 @@ class SaleOrderImport(models.TransientModel):
 
     def create_order_return_action(self, parsed_order, order_filename):
         self.ensure_one()
-        order = self.create_order(
-            parsed_order,
-            self.price_source,
-            order_filename,
-            confirm_order=self._order_should_be_confirmed(),
-        )
+        order = self.create_order(parsed_order, self.price_source, order_filename)
         order.message_post(
             body=_("Created automatically via file import (%s).") % self.order_filename
         )
@@ -441,10 +426,6 @@ class SaleOrderImport(models.TransientModel):
             }
         )
         return action
-
-    def _order_should_be_confirmed(self):
-        # Hook to override behavior
-        return self.confirm_order
 
     # TODO: add tests
     @api.model
@@ -505,9 +486,8 @@ class SaleOrderImport(models.TransientModel):
             vals.pop("order_id")
 
         # Handle additional fields dynamically if available.
-        # If a field is added to a record and its value is injected by a parser
-        # you won't have to override `_prepare_create_order_line`
-        # to let it propagate.
+        # This way, if you add a field to a record and it's value is injected by a parser
+        # you won't have to override `_prepare_create_order_line` to let it propagate.
         for k, v in import_line.items():
             if k not in vals and k in solo._fields:
                 vals[k] = v
@@ -601,8 +581,8 @@ class SaleOrderImport(models.TransientModel):
                 oline.write(write_vals)
         if compare_res["to_remove"]:
             to_remove_label = [
-                f"{line.product_uom_qty} {line.product_uom.name} "
-                f"x {line.product_id.name}"
+                "%s %s x %s"
+                % (line.product_uom_qty, line.product_uom.name, line.product_id.name)
                 for line in compare_res["to_remove"]
             ]
             chatter.append(
@@ -622,8 +602,12 @@ class SaleOrderImport(models.TransientModel):
                 line_vals["order_id"] = order.id
                 new_line = solo.create(line_vals)
                 to_create_label.append(
-                    f"{new_line.product_uom_qty} {new_line.product_uom.name} "
-                    f"x {new_line.name}"
+                    "%s %s x %s"
+                    % (
+                        new_line.product_uom_qty,
+                        new_line.product_uom.name,
+                        new_line.name,
+                    )
                 )
             chatter.append(
                 _(

@@ -210,12 +210,8 @@ grammar = OrderedDict(
             "type": "datetime",
             "length": 14,
             "dp": False,
-            "ubl_path": [
-                "DespatchAdvice.cac:Shipment.cac:Delivery."
-                "cac:EstimatedDeliveryPeriod.cbc:EndDate",
-                "DespatchAdvice.cac:Shipment.cac:Delivery."
-                "cac:EstimatedDeliveryPeriod.cbc:EndTime",
-            ],
+            "ubl_path": "DespatchAdvice.cac:Shipment.cac:Delivery."
+            "cac:EstimatedDeliveryPeriod.cbc:EndDate",
             "df_val": False,
             "df_func": False,
         },

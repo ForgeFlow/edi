@@ -32,31 +32,17 @@ class BaseUbl(models.AbstractModel):
     @api.model
     def _ubl_add_address(self, partner, node_name, parent_node, ns, version="2.1"):
         address = etree.SubElement(parent_node, ns["cac"] + node_name)
-        if partner.street or partner.street2:
+        if partner.street:
             streetname = etree.SubElement(address, ns["cbc"] + "StreetName")
-            streetname.text = partner.street or partner.street2
-        if partner.street and partner.street2:
+            streetname.text = partner.street
+        if partner.street2:
             addstreetname = etree.SubElement(
                 address, ns["cbc"] + "AdditionalStreetName"
             )
             addstreetname.text = partner.street2
-        # if oca/partner-contact/partner_address_street3 is installed
         if hasattr(partner, "street3") and partner.street3:
-            # In an address, the real street is usually put in the last field
-            if partner.street and partner.street2:
-                # The first field is usually the Department
-                department = etree.SubElement(address, ns["cbc"] + "Department")
-                department.text = partner.street
-                streetname.text = partner.street2
-                addstreetname.text = partner.street3
-            elif partner.street or partner.street2:
-                addstreetname = etree.SubElement(
-                    address, ns["cbc"] + "AdditionalStreetName"
-                )
-                addstreetname.text = partner.street3
-            else:
-                streetname = etree.SubElement(address, ns["cbc"] + "StreetName")
-                streetname.text = partner.street3
+            blockname = etree.SubElement(address, ns["cbc"] + "BlockName")
+            blockname.text = partner.street3
         if partner.city:
             city = etree.SubElement(address, ns["cbc"] + "CityName")
             city.text = partner.city
@@ -68,15 +54,10 @@ class BaseUbl(models.AbstractModel):
             state.text = partner.state_id.name
             state_code = etree.SubElement(address, ns["cbc"] + "CountrySubentityCode")
             state_code.text = partner.state_id.code
-        # Fallback on company country if the partner has no country provided
-        country = partner.country_id or self.env.company.partner_id.country_id
-        if country:
-            self._ubl_add_country(country, address, ns, version=version)
+        if partner.country_id:
+            self._ubl_add_country(partner.country_id, address, ns, version=version)
         else:
-            logger.warning(
-                "UBL: missing country on partner %s and no fallback on company",
-                partner.name,
-            )
+            logger.warning("UBL: missing country on partner %s", partner.name)
 
     @api.model
     def _ubl_get_contact_id(self, partner):
@@ -86,24 +67,20 @@ class BaseUbl(models.AbstractModel):
     def _ubl_add_contact(
         self, partner, parent_node, ns, node_name="Contact", version="2.1"
     ):
-        contact = None  # Do not create an empty contact element
+        contact = etree.SubElement(parent_node, ns["cac"] + node_name)
         contact_id_text = self._ubl_get_contact_id(partner)
         if contact_id_text:
-            contact = etree.SubElement(parent_node, ns["cac"] + node_name)
             contact_id = etree.SubElement(contact, ns["cbc"] + "ID")
             contact_id.text = contact_id_text
         if partner.parent_id:
-            contact = contact or etree.SubElement(parent_node, ns["cac"] + node_name)
             contact_name = etree.SubElement(contact, ns["cbc"] + "Name")
             contact_name.text = partner.name or partner.parent_id.name
         phone = partner.phone or partner.commercial_partner_id.phone
         if phone:
-            contact = contact or etree.SubElement(parent_node, ns["cac"] + node_name)
             telephone = etree.SubElement(contact, ns["cbc"] + "Telephone")
             telephone.text = phone
         email = partner.email or partner.commercial_partner_id.email
         if email:
-            contact = contact or etree.SubElement(parent_node, ns["cac"] + node_name)
             electronicmail = etree.SubElement(contact, ns["cbc"] + "ElectronicMail")
             electronicmail.text = email
 
@@ -327,7 +304,6 @@ class BaseUbl(models.AbstractModel):
         price_subtotal=False,
         qty_precision=3,
         price_precision=2,
-        taxes=None,
         version="2.1",
     ):
         line_item = etree.SubElement(parent_node, ns["cac"] + "LineItem")
@@ -361,14 +337,7 @@ class BaseUbl(models.AbstractModel):
             )
             base_qty.text = "1"  # What else could it be ?
         self._ubl_add_item(
-            name,
-            product,
-            line_item,
-            ns,
-            type_=type_,
-            seller=seller,
-            version=version,
-            taxes=taxes,
+            name, product, line_item, ns, type_=type_, seller=seller, version=version
         )
 
     def _ubl_get_seller_code_from_product(self, product):
@@ -382,7 +351,7 @@ class BaseUbl(models.AbstractModel):
         return ""
 
     @api.model
-    def _ubl_add_item(  # noqa  C901
+    def _ubl_add_item(
         self,
         name,
         product,
@@ -391,7 +360,6 @@ class BaseUbl(models.AbstractModel):
         type_="purchase",
         seller=False,
         customer=False,
-        taxes=None,
         version="2.1",
     ):
         """Beware that product may be False (in particular on invoices)"""
@@ -450,29 +418,23 @@ class BaseUbl(models.AbstractModel):
                     schemeID="0160",  # GTIN = 0160
                 )
                 std_identification_id.text = product.barcode
-            if taxes is not None:
-                pass
-                # Provide the line taxes to this method otherwise it will
-                # fallback on the product taxes without taking into account the
-                # fiscal position
-            elif type_ == "sale":
+            # I'm not 100% sure, but it seems that ClassifiedTaxCategory
+            # contains the taxes of the product without taking into
+            # account the fiscal position
+            if type_ == "sale":
                 taxes = product.taxes_id
             else:
                 taxes = product.supplier_taxes_id
-        skip_taxes = self.env.context.get("ubl_add_item__skip_taxes")
-        if taxes and not skip_taxes:
-            for tax in taxes:
-                if tax.unece_type_id.code != "VAT":
-                    # declare only VAT taxes
-                    continue
-                self._ubl_add_tax_category(
-                    tax,
-                    item,
-                    ns,
-                    node_name="ClassifiedTaxCategory",
-                    version=version,
-                )
-        if product:
+            skip_taxes = self.env.context.get("ubl_add_item__skip_taxes")
+            if taxes and not skip_taxes:
+                for tax in taxes:
+                    self._ubl_add_tax_category(
+                        tax,
+                        item,
+                        ns,
+                        node_name="ClassifiedTaxCategory",
+                        version=version,
+                    )
             for attribute_value in product.attribute_line_ids.mapped("value_ids"):
                 item_property = etree.SubElement(
                     item, ns["cac"] + "AdditionalItemProperty"
@@ -530,16 +492,9 @@ class BaseUbl(models.AbstractModel):
         tax_category_id.text = tax.unece_categ_code
         tax_name = etree.SubElement(tax_category, ns["cbc"] + "Name")
         tax_name.text = tax.name
-        tax_percent = etree.SubElement(tax_category, ns["cbc"] + "Percent")
         if tax.amount_type == "percent":
+            tax_percent = etree.SubElement(tax_category, ns["cbc"] + "Percent")
             tax_percent.text = str(tax.amount)
-        else:
-            tax_percent.text = "0"
-        if tax.unece_categ_code == "E":
-            tax_exmption_reason = etree.SubElement(
-                tax_category, ns["cbc"] + "TaxExemptionReason"
-            )
-            tax_exmption_reason.text = "Exempt"
         tax_scheme_dict = self._ubl_get_tax_scheme_dict_from_tax(tax)
         self._ubl_add_tax_scheme(tax_scheme_dict, tax_category, ns, version=version)
 
@@ -552,12 +507,7 @@ class BaseUbl(models.AbstractModel):
                     tax_name=tax.name,
                 )
             )
-        # Peppol BIS Billing 3.0 supports only VAT taxes
-        tax_scheme_dict = {
-            "id": "VAT",  # tax.unece_type_code,
-            "name": False,
-            "type_code": False,
-        }
+        tax_scheme_dict = {"id": tax.unece_type_code, "name": False, "type_code": False}
         return tax_scheme_dict
 
     @api.model

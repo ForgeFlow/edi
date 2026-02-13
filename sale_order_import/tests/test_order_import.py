@@ -18,47 +18,13 @@ class TestOrderImport(TestCommon):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        cls.partner1 = cls.env["res.partner"].create(
-            {
-                "is_company": True,
-                "name": "Test sale_order_import",
-                "email": "test_partner_so_import@ilovetests.com",
-            }
-        )
-        cls.product1 = cls.env["product.product"].create(
-            {
-                "name": "Test product sale_order_import 1",
-                "default_code": "TEST_SOIMPORT1",
-                "sale_ok": True,
-                "uom_id": cls.env.ref("uom.product_uom_unit").id,
-                "lst_price": 10.13,
-            }
-        )
-        cls.product2 = cls.env["product.product"].create(
-            {
-                "name": "Test product sale_order_import 2",
-                "default_code": "TEST_SOIMPORT2",
-                "sale_ok": True,
-                "uom_id": cls.env.ref("uom.product_uom_unit").id,
-                "lst_price": 10.12,
-            }
-        )
-        cls.product3 = cls.env["product.product"].create(
-            {
-                "name": "Test product sale_order_import 3",
-                "default_code": "TEST_SOIMPORT3",
-                "sale_ok": True,
-                "uom_id": cls.env.ref("uom.product_uom_unit").id,
-                "lst_price": 10.14,
-            }
-        )
         cls.parsed_order = {
-            "partner": {"email": "test_partner_so_import@ilovetests.com"},
+            "partner": {"email": "deco.addict82@example.com"},
             "date": "2018-08-14",
             "order_ref": "TEST1242",
             "lines": [
                 {
-                    "product": {"code": "TEST_SOIMPORT1"},
+                    "product": {"code": "FURN_8888"},
                     "qty": 2,
                     "uom": {"unece_code": "C62"},
                     "price_unit": 12.42,
@@ -79,16 +45,16 @@ class TestOrderImport(TestCommon):
         # Now update the order
         parsed_order_up = dict(
             self.parsed_order,
-            partner={"email": "test_partner_so_import@ilovetests.com"},
+            partner={"email": "agrolait@yourcompany.example.com"},
             lines=[
                 {
-                    "product": {"code": "TEST_SOIMPORT1"},
+                    "product": {"code": "FURN_8888"},
                     "qty": 3,
                     "uom": {"unece_code": "C62"},
                     "price_unit": 12.42,
                 },
                 {
-                    "product": {"code": "TEST_SOIMPORT2"},
+                    "product": {"code": "FURN_9999"},
                     "qty": 1,
                     "uom": {"unece_code": "C62"},
                     "price_unit": 1.42,
@@ -101,10 +67,10 @@ class TestOrderImport(TestCommon):
         # test raise UserError if not price_unit
         parsed_order_up_no_price_unit = dict(
             self.parsed_order,
-            partner={"email": "test_partner_so_import@ilovetests.com"},
+            partner={"email": "agrolait@yourcompany.example.com"},
             lines=[
                 {
-                    "product": {"code": "TEST_SOIMPORT3"},
+                    "product": {"code": "FURN_7777"},
                     "qty": 4,
                     "uom": {"unece_code": "C62"},
                 },
@@ -120,18 +86,6 @@ class TestOrderImport(TestCommon):
             self.wiz_model.update_order_lines(
                 parsed_order_up_no_price_unit, order, "order"
             )
-
-    def test_order_import_action(self):
-        wiz = self.wiz_model.create({"import_type": "xml"})
-        action = wiz.create_order_return_action(self.parsed_order, "order.ref")
-        order = self.env["sale.order"].browse(action["res_id"])
-        self.assertEqual(order.state, "draft")
-
-    def test_order_import_confirm(self):
-        wiz = self.wiz_model.create({"import_type": "xml", "confirm_order": True})
-        action = wiz.create_order_return_action(self.parsed_order, "order.ref")
-        order = self.env["sale.order"].browse(action["res_id"])
-        self.assertEqual(order.state, "sale")
 
     def test_order_import_default_so_vals(self):
         default = {"client_order_ref": "OVERRIDE"}
@@ -168,9 +122,9 @@ class TestOrderImport(TestCommon):
                 self.assertEqual(action["view_id"], False)
                 mocked.assert_called()
                 so = self.env["sale.order"].browse(action["res_id"])
-                self.assertEqual(so.partner_id, self.partner1)
+                self.assertEqual(so.partner_id.email, "deco.addict82@example.com")
                 self.assertEqual(so.client_order_ref, "TEST1242")
-                self.assertEqual(so.order_line.product_id, self.product1)
+                self.assertEqual(so.order_line.product_id.code, "FURN_8888")
                 self.assertEqual(so.state, "draft")
 
         # Create another form to update the above sale order
@@ -189,13 +143,13 @@ class TestOrderImport(TestCommon):
                     self.parsed_order,
                     lines=[
                         {
-                            "product": {"code": "TEST_SOIMPORT1"},
+                            "product": {"code": "FURN_8888"},
                             "qty": 3,
                             "uom": {"unece_code": "C62"},
                             "price_unit": 12.42,
                         },
                         {
-                            "product": {"code": "TEST_SOIMPORT2"},
+                            "product": {"code": "FURN_9999"},
                             "qty": 1,
                             "uom": {"unece_code": "C62"},
                             "price_unit": 1.42,
@@ -214,3 +168,30 @@ class TestOrderImport(TestCommon):
 
         self.assertEqual(len(so.order_line), 2)
         self.assertEqual(so.order_line[0].product_uom_qty, 3)
+
+    def test_confirm_order(self):
+        # Prepare test data
+        order_file_data = base64.b64encode(
+            b"<?xml version='1.0' encoding='utf-8'?><root><foo>baz</foo></root>"
+        )
+        order_filename = "test_order.xml"
+        mock_parse_order = mock.patch.object(type(self.wiz_model), "parse_xml_order")
+        # Create a new form
+        with Form(
+            self.wiz_model.with_context(
+                default_order_filename=order_filename,
+                default_confirm_order=True,
+            )
+        ) as form:
+            with mock_parse_order as mocked:
+                # Return 'rfq' for doc_type
+                mocked.return_value = "rfq"
+                # Set values for the required fields
+                form.import_type = "xml"
+                form.order_file = order_file_data
+                # Test the button with the simulated values
+                mocked.return_value = self.parsed_order
+                action = form.save().import_order_button()
+                so = self.env["sale.order"].browse(action["res_id"])
+                # Check the state of the order
+                self.assertEqual(so.state, "sale")

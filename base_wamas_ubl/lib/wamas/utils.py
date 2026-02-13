@@ -79,10 +79,6 @@ def get_current_datetime(val=0):
     return datetime.utcnow()
 
 
-def get_quantity_done(quantity, quantity_done=None):
-    return quantity if quantity_done is None else quantity_done
-
-
 def _set_string(val, length, dp, **kwargs):
     return str(val or "").ljust(length)[:length]
 
@@ -303,9 +299,9 @@ def generate_wamas_dict(dict_item, grammar, **kwargs):  # noqa: C901
             if isinstance(ubl_path, list):
                 lst_val = []
                 for _item in ubl_path:
-                    lst_val.append(dict_item.get(_item) or "")
+                    lst_val.append(dict_item.get(_item, ""))
                 if lst_val:
-                    val = " ".join(lst_val).strip()
+                    val = " ".join(lst_val)
             elif isinstance(ubl_path, dict):
                 for _key in ubl_path:
                     if dict_item.get(_key, False):
@@ -331,14 +327,6 @@ def generate_wamas_dict(dict_item, grammar, **kwargs):  # noqa: C901
                 args = (kwargs.get("idx_loop", 0),)
             elif df_func == "get_random_str_num":
                 args = (length,)
-            elif df_func == "get_quantity_done":
-                if "BestMng" in dict_item.keys():
-                    quantity = dict_item.get("BestMng", 0)
-                elif "SollMng" in dict_item.keys():
-                    quantity = dict_item.get("SollMng", 0)
-                else:
-                    raise Exception("Quantity field not found")
-                args = (quantity, kwargs.get("processed_qty"))
             elif "get_date_from_field" in df_func:
                 args = (dict_wamas_out,)
                 args += ast.literal_eval(re.search(r"\((.*?)\)", df_func).group(0))
@@ -420,7 +408,7 @@ def fw2dict(line, grammar, telegram_type):
             dp = fdef["dp"]
             val = float(b[:-dp] + "." + b[-dp:])
         else:
-            val = str(escape(b.rstrip()))
+            val = escape(b.rstrip())
         res[fname] = val
     _logger.debug(pformat(res))
     return res

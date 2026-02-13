@@ -3,7 +3,6 @@
 
 import argparse
 import logging
-from collections import OrderedDict
 from pprint import pformat
 
 from freezegun import freeze_time
@@ -46,29 +45,21 @@ class Extractor:
                     key,
                 )
 
-    def get_line(
-        self,
-        telegram_type,
-        transfer_key1_name,
-        transfer_key2_name=False,
-        package_key_name=False,
-    ):
+    def get_line(self, telegram_type, transfer_key_name, package_key_name=False):
         """Process a list of dict as lines of the transfers
 
         Parameters:
             telegram_type: the key to get the list out of data
-            transfer_key1_name: the key in the dict that serves to identify the
+            transfer_key_name: the key in the dict that serves to identify the
                                parent in transfers
-            transfer_key2_name: the key in the dict that serves to identify a sub-transfer
             package_key_name: the key in the dict that serves to identify the
                               related package
         """
-        transfers = {}
         if telegram_type not in self.data:
             raise ValueError("Missing telegram: %s" % telegram_type)
 
         for line in self.data[telegram_type]:
-            key = line.get(transfer_key1_name)
+            key = line[transfer_key_name]
             if key not in self.transfers:
                 _logger.debug(
                     "Found %s (line) record for unknown transfer, ignoring: %s",
@@ -76,14 +67,7 @@ class Extractor:
                     key,
                 )
                 continue
-
-            # Create a key for the sub-transfer
-            if transfer_key2_name and line.get(transfer_key2_name):
-                key = (key, line[transfer_key2_name])
-            if key not in transfers:
-                # Copy parent transfer data
-                transfers[key] = OrderedDict(self.transfers[line[transfer_key1_name]])
-            transfers[key].setdefault("lines", []).append(line)
+            self.transfers[key].setdefault("lines", []).append(line)
             if not package_key_name:
                 continue
             package_id = line[package_key_name]
@@ -96,8 +80,7 @@ class Extractor:
                 )
                 continue
             line["package"] = package
-            transfers[key].setdefault("packages", []).append(package)
-        self.transfers = transfers
+            self.transfers[key].setdefault("packages", []).append(package)
 
 
 def wamas2dict(msg):
@@ -138,19 +121,14 @@ def dict2ubl(msg_type, data, extra_data=False):
 
     if msg_type == "ReceptionResponse":
         extractor.get_head("WEAKQ", "IvWevk_WevId_WevNr")
-        extractor.get_line("WEAPQ", "IvWevp_WevId_WevNr", "IvWevp_WEAP_WeaId_WeaNr")
+        extractor.get_line("WEAPQ", "IvWevp_WevId_WevNr")
     elif msg_type == "ReturnResponse":
         extractor.get_head("KRETKQ", "IvKretk_KretId_KretNr")
         extractor.get_line("KRETPQ", "IvKretp_KretId_KretNr")
     elif msg_type == "PickingResponse":
         extractor.get_head("AUSKQ", "IvAusk_AusId_AusNr")
-        if "WATEKQ" not in extractor.data and "WATEPQ" not in extractor.data:
-            extractor.get_line("AUSPQ", "IvAusp_UrAusId_AusNr")
-        else:
-            extractor.get_head("WATEKQ", "IvTek_TeId", extractor.packages)
-            extractor.get_line(
-                "WATEPQ", "IvAusp_UrAusId_AusNr", package_key_name="IvTep_TeId"
-            )
+        extractor.get_head("WATEKQ", "IvTek_TeId", extractor.packages)
+        extractor.get_line("WATEPQ", "IvAusp_UrAusId_AusNr", "IvTep_TeId")
     else:
         raise Exception("Invalid message type: %s" % msg_type)
 
